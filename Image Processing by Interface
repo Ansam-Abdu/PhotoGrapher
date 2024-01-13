@@ -1,0 +1,95 @@
+import tkinter as tk
+from tkinter import filedialog
+from PIL import Image, ImageTk, ImageFilter
+import numpy as np
+
+class ImageEditor:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Image Editor")
+
+        self.original_image = None
+        self.current_image = None
+        self.canvas = None
+
+        self.build_ui()
+
+    def build_ui(self):
+        # Top frame for buttons
+        button_frame = tk.Frame(self.root)
+        button_frame.pack(side=tk.TOP, fill=tk.X)
+
+        # Buttons
+        tk.Button(button_frame, text="Load Image", command=self.load_image).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Resize", command=self.resize_image).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Grayscale", command=self.convert_to_grayscale).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Salt and Pepper Noise", command=lambda: self.add_noise("Salt and Pepper")).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Gaussian Noise", command=lambda: self.add_noise("Gaussian")).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Periodic Noise", command=lambda: self.add_noise("Periodic")).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Blur", command=self.apply_blur).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Sharpen", command=self.apply_sharpen).pack(side=tk.LEFT)
+
+        # Canvas
+        self.canvas = tk.Canvas(self.root)
+        self.canvas.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+    def load_image(self):
+        filename = filedialog.askopenfilename(title="Select Image")
+        if filename:
+            self.original_image = Image.open(filename)
+            self.current_image = self.original_image.copy()
+            self.display_image()
+
+    def display_image(self):
+        if self.current_image:
+            img = ImageTk.PhotoImage(self.current_image)
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+            self.canvas.image = img  # Keep a reference to prevent garbage collection
+
+    def resize_image(self):
+        if self.current_image:
+            width, height = self.current_image.size
+            self.current_image = self.current_image.resize((width // 2, height // 2))
+            self.display_image()
+
+    def convert_to_grayscale(self):
+        if self.current_image:
+            self.current_image = self.current_image.convert("L")
+            self.display_image()
+
+    def add_noise(self, noise_type):
+        if self.current_image:
+            img_array = np.array(self.current_image)
+            if noise_type == "Salt and Pepper":
+                # Lower the probability of salt and pepper noise
+                img_array = np.random.choice([0, 255], size=img_array.shape, p=[0.00005, 0.99995])  # Adjusted probability
+            elif noise_type == "Gaussian":
+                # Reduce the standard deviation of Gaussian noise
+                img_array = np.random.normal(loc=0, scale=5, size=img_array.shape) + img_array  # Adjusted scale
+            elif noise_type == "Periodic":
+                # Decrease the amplitude of periodic noise
+                rows, cols = img_array.shape
+                for i in range(rows):
+                    for j in range(cols):
+                        img_array[i, j] += 5 * np.sin(2 * np.pi * i / 50) * np.cos(2 * np.pi * j / 50)  # Adjusted amplitude
+            self.current_image = Image.fromarray(np.clip(img_array, 0, 255).astype(np.uint8))
+            self.display_image()
+
+
+
+
+    def apply_blur(self):
+        if self.current_image:
+            self.current_image = self.current_image.filter(ImageFilter.BLUR)
+            self.display_image()
+
+    def apply_sharpen(self):
+        if self.current_image:
+            self.current_image = self.current_image.filter(ImageFilter.SHARPEN)
+            self.display_image()
+
+    # Implement add_gaussian_noise, add_periodic_noise, apply_blur, and apply_sharpen functions similarly
+
+if __name__ == "__main__":
+    editor = ImageEditor()
+    editor.root.mainloop()
